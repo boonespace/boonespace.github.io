@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>OGS Branch Marker</title>
+<style>
+  body { font-family: -apple-system, "Segoe UI", sans-serif; max-width: 720px; margin: 40px auto; padding: 0 20px; color: #222; line-height: 1.6; }
+  h1 { font-size: 20px; }
+  h2 { font-size: 16px; margin-top: 28px; }
+  .btn-row { display: flex; gap: 10px; align-items: center; margin: 8px 0; }
+  .drag { display: inline-block; padding: 8px 16px; background: #2a6df4; color: #fff; border-radius: 6px; text-decoration: none; font-weight: 600; cursor: grab; user-select: none; white-space: nowrap; }
+  .drag:active { cursor: grabbing; }
+  .drag.off { background: #888; }
+  .tip { background: #fff8e0; border-left: 4px solid #e0b000; padding: 10px 14px; margin: 16px 0; font-size: 14px; }
+  textarea { width: 100%; height: 120px; font-family: monospace; font-size: 11px; box-sizing: border-box; }
+  code { background: #f2f2f2; padding: 2px 5px; border-radius: 3px; font-size: 13px; }
+</style>
+</head>
+<body>
+
+<h1>OGS Branch Marker</h1>
+<p>在 OGS Review 页面，标记当前局面下各分支的下一步位置。实心圆点，颜色可调。</p>
+
+<h2>安装</h2>
+<p>把下面的按钮<strong>拖拽到浏览器书签栏</strong>：</p>
+
+<div class="btn-row">
+  <a class="drag" id="btn-on" href="#">ogs-branch-mark</a>
+  <a class="drag off" id="btn-off" href="#">ogs-branch-mark off</a>
+</div>
+
+<div class="tip">
+  <strong>拖拽不生效？</strong><br>
+  某些浏览器会拦截从本地 HTML 拖拽的 <code>javascript:</code> 链接。<br>
+  如果拖不动，请手动创建书签：右键书签栏 → 添加书签，名称填 <code>ogs-branch-mark</code>，网址粘贴下方代码。
+</div>
+
+<h2>手动创建（备用）</h2>
+<p>启动代码：</p>
+<textarea readonly id="code-on"></textarea>
+<p>停止代码：</p>
+<textarea readonly id="code-off"></textarea>
+
+<h2>使用</h2>
+<ol>
+  <li>在 OGS Review 页面，点击书签栏上的 <strong>ogs-branch-mark</strong></li>
+  <li>右侧边栏顶部出现控制面板，可调 R/G/B/A</li>
+  <li>切换节点时，当前局面的下一步会自动标记</li>
+  <li>点击 <strong>ogs-branch-mark off</strong> 停止并清除</li>
+</ol>
+
+<script>
+var codeOn = "javascript:(function(){if(window.__branchMarkerTimer){clearInterval(window.__branchMarkerTimer);window.__branchMarkerTimer=null;}if(window.__branchMarkerObserver){window.__branchMarkerObserver.disconnect();window.__branchMarkerObserver=null;}if(window.__branchMarkerUI){window.__branchMarkerUI.remove();window.__branchMarkerUI=null;}var g=window.global_goban;if(!g||!g.engine){alert('global_goban not found. Run on OGS Review page.');return;}var cfg={r:255,g:59,b:59,a:0.5};var lastMove=null;function colorStr(){return 'rgba('+cfg.r+','+cfg.g+','+cfg.b+','+cfg.a+')';}function render(){var cur=g.engine.cur_move;if(cur===lastMove)return;lastMove=cur;var nexts=[];if(cur.branches)cur.branches.forEach(function(c){if(c.x>=0&&c.y>=0)nexts.push({x:c.x,y:c.y});});if(cur.trunk_next&&cur.trunk_next.x>=0)nexts.push({x:cur.trunk_next.x,y:cur.trunk_next.y});var seen=new Set();var unique=nexts.filter(function(p){var k=p.x+','+p.y;if(seen.has(k))return false;seen.add(k);return true;});g.setColoredCircles([],false);if(unique.length>0){var circles=unique.map(function(p){return{move:{x:p.x,y:p.y},color:colorStr(),border_color:colorStr(),border_width:0};});g.setColoredCircles(circles,false);}if(typeof g.redraw==='function')g.redraw(true);}var ui=document.createElement('div');ui.id='branch-marker-ui';ui.style.cssText='background:rgba(30,30,30,.6);color:#ddd;padding:8px 10px;border-radius:6px;font:12px/1.5 sans-serif;margin-bottom:8px;user-select:none;';ui.innerHTML='<div style=\"font-weight:600;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;\"><span>Branch</span><span style=\"cursor:pointer;opacity:.6;\" data-act=\"stop\">x</span></div>'+'<label style=\"display:flex;align-items:center;gap:6px;margin-bottom:3px;\"><span style=\"width:20px;flex:none;\">R</span><input type=\"range\" min=\"0\" max=\"255\" value=\"'+cfg.r+'\" data-k=\"r\" style=\"flex:1;\"></label>'+'<label style=\"display:flex;align-items:center;gap:6px;margin-bottom:3px;\"><span style=\"width:20px;flex:none;\">G</span><input type=\"range\" min=\"0\" max=\"255\" value=\"'+cfg.g+'\" data-k=\"g\" style=\"flex:1;\"></label>'+'<label style=\"display:flex;align-items:center;gap:6px;margin-bottom:3px;\"><span style=\"width:20px;flex:none;\">B</span><input type=\"range\" min=\"0\" max=\"255\" value=\"'+cfg.b+'\" data-k=\"b\" style=\"flex:1;\"></label>'+'<label style=\"display:flex;align-items:center;gap:6px;\"><span style=\"width:20px;flex:none;\">A</span><input type=\"range\" min=\"0\" max=\"100\" value=\"'+Math.round(cfg.a*100)+'\" data-k=\"a\" style=\"flex:1;\"></label>';ui.addEventListener('input',function(e){var k=e.target.dataset.k;if(!k)return;var v=+e.target.value;if(k==='a')cfg.a=v/100;else cfg[k]=v;lastMove=null;render();});ui.addEventListener('click',function(e){if(e.target.dataset.act==='stop'){if(window.__branchMarkerTimer){clearInterval(window.__branchMarkerTimer);window.__branchMarkerTimer=null;}if(window.__branchMarkerObserver){window.__branchMarkerObserver.disconnect();window.__branchMarkerObserver=null;}g.setColoredCircles([],false);g.redraw(true);ui.remove();window.__branchMarkerUI=null;}});function mountUI(){var sidebar=document.querySelector('.GobanView-sidebar-content');if(!sidebar)return false;if(!sidebar.contains(ui))sidebar.insertBefore(ui,sidebar.firstChild);return true;}if(!mountUI())console.error('sidebar not found');window.__branchMarkerObserver=new MutationObserver(function(){if(!document.getElementById('branch-marker-ui'))mountUI();});window.__branchMarkerObserver.observe(document.body,{childList:true,subtree:true});window.__branchMarkerUI=ui;window.__branchMarkerTimer=setInterval(render,150);render();console.log('branch marker started');})();";
+
+var codeOff = "javascript:(function(){if(window.__branchMarkerTimer){clearInterval(window.__branchMarkerTimer);window.__branchMarkerTimer=null;}if(window.__branchMarkerObserver){window.__branchMarkerObserver.disconnect();window.__branchMarkerObserver=null;}if(window.__branchMarkerUI){window.__branchMarkerUI.remove();window.__branchMarkerUI=null;}var g=window.global_goban;if(g&&g.engine){g.setColoredCircles([],false);if(typeof g.redraw==='function')g.redraw(true);}console.log('branch marker stopped');})();";
+
+document.getElementById("code-on").value = codeOn;
+document.getElementById("code-off").value = codeOff;
+document.getElementById("btn-on").href = codeOn;
+document.getElementById("btn-off").href = codeOff;
+</script>
+
+</body>
+</html>
